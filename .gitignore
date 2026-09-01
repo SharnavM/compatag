@@ -1,0 +1,28 @@
+# Virtual environments
+.venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Test and coverage output
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type checker and linter caches
+.mypy_cache/
+.ruff_cache/
+
+# Packaging output
+build/
+dist/
+*.egg-info/
+
+# IDE settings
+.vscode/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+desktop.ini
