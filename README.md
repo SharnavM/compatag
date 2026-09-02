@@ -51,7 +51,9 @@ python -m mypy src
 
 ## Status
 
-Pre-alpha. The compatibility engine and MCP server are not implemented yet.
+Pre-alpha.
+
+Target environment modelling and cross-platform wheel tag generation are implemented. Package metadata analysis, manifest auditing, and MCP interfaces are still under development.
 
 ## License
 
