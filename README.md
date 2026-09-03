@@ -53,7 +53,14 @@ python -m mypy src
 
 Pre-alpha.
 
-Target environment modelling and cross-platform wheel tag generation are implemented. Package metadata analysis, manifest auditing, and MCP interfaces are still under development.
+Implemented:
+
+- deployment target modelling;
+- cross-platform wheel compatibility-tag generation;
+- asynchronous PyPI Simple API retrieval;
+- published distribution classification and metadata normalization.
+
+Package compatibility analysis, manifest auditing, and MCP interfaces are still under development.
 
 ## License
 

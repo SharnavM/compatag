@@ -74,3 +74,45 @@ The compatibility engine will return typed domain results.
 CLI and MCP integrations will translate those results for their respective consumers rather than implementing compatibility logic themselves.
 
 Manifest contents will be supplied to remote MCP tools as data rather than granting the server arbitrary filesystem access.
+
+## PyPI data boundary
+
+PyPI access is isolated behind `PyPIClient`.
+
+The client converts external Simple Repository API responses into Compatag
+domain models before compatibility analysis begins.
+
+The analyzer must not depend on PyPI's raw JSON field names or HTTP response
+objects.
+
+```text
+PyPI
+  |
+  v
+PyPIClient
+  |
+  v
+ProjectDistributions
+  |
+  v
+Analyzer
+```
+
+External wire models are forward-tolerant. Compatag domain models remain
+strict.
+
+This architectural rule will matter in Milestone 3.
+
+The analyzer should never contain code like:
+
+```python
+response["files"][0]["requires-python"]
+```
+
+It receives a:
+
+```
+DistributionFile
+```
+
+instead.
