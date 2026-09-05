@@ -116,3 +116,38 @@ DistributionFile
 ```
 
 instead.
+
+## Package analysis boundary
+
+Package compatibility decisions live in `analyzer.py`.
+
+The analyzer consumes Compatag domain models rather than raw PyPI responses.
+
+```text
+TargetEnvironment
+       |
+       +-------------------+
+                           |
+                           v
+                    Package Analyzer
+                           ^
+                           |
+ProjectDistributions ------+
+       ^
+       |
+   PyPIClient
+```
+
+The analyzer owns:
+
+- PEP 508 requirement interpretation;
+- PEP 440 release selection;
+- target environment-marker evaluation;
+- Requires-Python evaluation;
+- wheel-tag matching;
+- source-distribution fallback;
+- yanked-artifact policy;
+- structured compatibility results.
+
+The PyPI client does not perform these decisions.
+CLI and MCP adapters must consume analyzer results rather than reimplementing compatibility logic.
