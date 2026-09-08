@@ -151,3 +151,38 @@ The analyzer owns:
 
 The PyPI client does not perform these decisions.
 CLI and MCP adapters must consume analyzer results rather than reimplementing compatibility logic.
+
+## Manifest boundary
+
+Dependency file syntax is isolated in `manifests.py`.
+
+```text
+requirements.txt ----+
+                     |
+                     v
+                Manifest Parser
+                     |
+pyproject.toml ------+
+                     |
+                     v
+               ParsedManifest
+                     |
+                     v
+               Manifest Audit
+```
+
+Manifest parsing owns:
+
+- requirements-file logical lines and comments;
+- PEP 508 dependency validation;
+- pyproject project dependencies;
+- project `requires-python`;
+- optional dependency selection;
+- simple self-referential extra composition;
+- dynamic-metadata detection;
+- source locations;
+- structured parse issues.
+
+The manifest parser does not access PyPI and does not evaluate package compatibility.
+
+Unsupported manifest constructs must be surfaced explicitly rather than silently ignored.

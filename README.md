@@ -58,9 +58,16 @@ Implemented:
 - deployment target modelling;
 - cross-platform wheel compatibility-tag generation;
 - asynchronous PyPI Simple API retrieval;
-- published distribution classification and metadata normalization.
+- published distribution classification and metadata normalization;
+- single-package compatibility analysis;
+- PEP 440 release selection and prerelease handling;
+- environment-marker and Requires-Python evaluation;
+- wheel, source-build, and yanked-artifact classification;
+- requirements.txt dependency parsing;
+- PEP 621 pyproject.toml dependency parsing;
+- optional dependency selection and dynamic-metadata detection.
 
-Package compatibility analysis, manifest auditing, and MCP interfaces are still under development.
+Project-wide manifest auditing, target comparison, CLI analysis commands, and MCP interfaces are still under development.
 
 ## License
 
