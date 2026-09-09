@@ -186,3 +186,36 @@ Manifest parsing owns:
 The manifest parser does not access PyPI and does not evaluate package compatibility.
 
 Unsupported manifest constructs must be surfaced explicitly rather than silently ignored.
+
+## Manifest audit boundary
+
+Project-wide analysis is coordinated by `audit.py`.
+
+```text
+ParsedManifest --------+
+                       |
+TargetEnvironment -----+----> Manifest Audit
+                       |           |
+PyPIClient ------------+           v
+                             Package Analyzer
+```
+
+The audit layer owns:
+
+- project-level `Requires-Python` evaluation;
+- package-check scheduling;
+- bounded concurrency;
+- duplicate-work elimination;
+- source-occurrence reconstruction;
+- aggregate counts;
+- overall severity;
+- verbosity filtering.
+
+The audit layer does not:
+
+- parse requirements-file or TOML syntax;
+- interpret raw PyPI responses;
+- implement wheel compatibility;
+- resolve transitive dependency graphs.
+
+Known requirements remain auditable even when the source manifest is incomplete.

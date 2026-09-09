@@ -53,6 +53,10 @@ python -m mypy src
 
 Pre-alpha.
 
+## Status
+
+Pre-alpha.
+
 Implemented:
 
 - deployment target modelling;
@@ -65,9 +69,13 @@ Implemented:
 - wheel, source-build, and yanked-artifact classification;
 - requirements.txt dependency parsing;
 - PEP 621 pyproject.toml dependency parsing;
-- optional dependency selection and dynamic-metadata detection.
+- optional dependency selection and dynamic-metadata detection;
+- project-wide manifest compatibility auditing;
+- project-level Requires-Python validation;
+- bounded concurrent dependency checks;
+- duplicate-check elimination with source preservation.
 
-Project-wide manifest auditing, target comparison, CLI analysis commands, and MCP interfaces are still under development.
+Target comparison, CLI analysis commands, and MCP interfaces are still under development.
 
 ## License
 

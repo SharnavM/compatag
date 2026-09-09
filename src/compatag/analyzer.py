@@ -13,7 +13,6 @@ from packaging.markers import (
     UndefinedEnvironmentName,
 )
 from packaging.requirements import InvalidRequirement, Requirement
-from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.tags import Tag, create_compatible_tags_selector
 from packaging.utils import (
     InvalidWheelFilename,
@@ -33,6 +32,11 @@ from compatag.pypi import (
     PyPIClient,
     PyPIRequestError,
     PyPIResponseError,
+)
+from compatag.python_compat import (
+    PythonCompatibility,
+    PythonSupport,
+    evaluate_requires_python,
 )
 from compatag.targets import TargetEnvironment, compatibility_tags
 
@@ -80,19 +84,6 @@ class PackageCheckResult(BaseModel):
 
     summary: str
     notes: tuple[str, ...] = ()
-
-
-class _PythonSupport(StrEnum):
-    COMPATIBLE = "compatible"
-    INCOMPATIBLE = "incompatible"
-    INDETERMINATE = "indeterminate"
-    INVALID = "invalid"
-
-
-@dataclass(frozen=True)
-class _PythonCheck:
-    support: _PythonSupport
-    reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -648,12 +639,12 @@ def _evaluate_release(
             if wheel_tags.isdisjoint(target_tag_set):
                 continue
 
-            python_check = _check_requires_python(
+            python_check = evaluate_requires_python(
                 file.requires_python,
                 target,
             )
 
-            if python_check.support is _PythonSupport.COMPATIBLE:
+            if python_check.support is PythonSupport.COMPATIBLE:
                 wheels.append(
                     _WheelCandidate(
                         file=file,
@@ -661,8 +652,8 @@ def _evaluate_release(
                     )
                 )
             elif python_check.support in {
-                _PythonSupport.INDETERMINATE,
-                _PythonSupport.INVALID,
+                PythonSupport.INDETERMINATE,
+                PythonSupport.INVALID,
             }:
                 if wheel_uncertainty is None:
                     wheel_uncertainty = _python_uncertainty(
@@ -673,16 +664,16 @@ def _evaluate_release(
             continue
 
         if file.kind is DistributionKind.SDIST:
-            python_check = _check_requires_python(
+            python_check = evaluate_requires_python(
                 file.requires_python,
                 target,
             )
 
-            if python_check.support is _PythonSupport.COMPATIBLE:
+            if python_check.support is PythonSupport.COMPATIBLE:
                 sdists.append(file)
             elif python_check.support in {
-                _PythonSupport.INDETERMINATE,
-                _PythonSupport.INVALID,
+                PythonSupport.INDETERMINATE,
+                PythonSupport.INVALID,
             }:
                 if sdist_uncertainty is None:
                     sdist_uncertainty = _python_uncertainty(
@@ -722,56 +713,13 @@ def _evaluate_release(
     return _ReleaseEvaluation()
 
 
-def _check_requires_python(
-    requires_python: str | None,
-    target: TargetEnvironment,
-) -> _PythonCheck:
-    if requires_python is None:
-        return _PythonCheck(support=_PythonSupport.COMPATIBLE)
-
-    try:
-        requirement = SpecifierSet(requires_python)
-    except InvalidSpecifier as exc:
-        return _PythonCheck(
-            support=_PythonSupport.INVALID,
-            reason=(f"Invalid Requires-Python metadata '{requires_python}': {exc}"),
-        )
-
-    major, minor = target.version_info
-
-    target_minor = SpecifierSet(f">={major}.{minor},<{major}.{minor + 1}")
-
-    try:
-        if target_minor.is_subset(requirement):
-            return _PythonCheck(support=_PythonSupport.COMPATIBLE)
-
-        if target_minor.is_disjoint(requirement):
-            return _PythonCheck(support=_PythonSupport.INCOMPATIBLE)
-    except ValueError as exc:
-        return _PythonCheck(
-            support=_PythonSupport.INDETERMINATE,
-            reason=(
-                f"Requires-Python could not be compared against the target minor version: {exc}"
-            ),
-        )
-
-    return _PythonCheck(
-        support=_PythonSupport.INDETERMINATE,
-        reason=(
-            f"Requires-Python '{requires_python}' matches only part "
-            f"of the CPython {target.python_version} release line; "
-            "a target micro version is required."
-        ),
-    )
-
-
 def _python_uncertainty(
     file: DistributionFile,
-    python_check: _PythonCheck,
+    python_check: PythonCompatibility,
 ) -> _Uncertainty:
     status = (
         PackageCheckStatus.METADATA_ERROR
-        if python_check.support is _PythonSupport.INVALID
+        if python_check.support is PythonSupport.INVALID
         else PackageCheckStatus.INDETERMINATE_REQUIRES_PYTHON
     )
 

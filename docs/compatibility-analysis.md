@@ -239,3 +239,16 @@ UNKNOWN
 `UNKNOWN` is intentionally distinct from failure.
 
 It means Compatag lacks enough reliable information to make the requested compatibility claim.
+
+## Shared Python compatibility logic
+
+Target-minor versus `Requires-Python` comparison is implemented in `python_compat.py`.
+
+The same calculation is used for:
+
+```text
+distribution-file Requires-Python
+project-level Requires-Python
+```
+
+This prevents package-level and project-level Python compatibility from developing different semantics.
