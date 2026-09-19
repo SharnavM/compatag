@@ -5,7 +5,7 @@ import warnings
 from datetime import datetime
 from importlib.metadata import version as distribution_version
 from types import TracebackType
-from typing import Self
+from typing import Protocol, Self
 from urllib.parse import urljoin
 
 import httpx
@@ -61,6 +61,13 @@ class PyPIResponseError(PyPIError):
 
 class SimpleAPIVersionWarning(UserWarning):
     """PyPI advertises a newer compatible minor Simple API version."""
+
+
+class ProjectSource(Protocol):
+    async def get_project(
+        self,
+        name: str,
+    ) -> ProjectDistributions: ...
 
 
 class _SimpleMeta(BaseModel):

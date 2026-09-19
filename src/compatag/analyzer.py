@@ -29,7 +29,7 @@ from compatag.distributions import (
 )
 from compatag.pypi import (
     ProjectNotFoundError,
-    PyPIClient,
+    ProjectSource,
     PyPIRequestError,
     PyPIResponseError,
 )
@@ -106,36 +106,32 @@ class _ReleaseEvaluation:
     uncertainty: _Uncertainty | None = None
 
 
-_MARKER_VARIABLES = frozenset(
-    {
-        "implementation_name",
-        "implementation_version",
-        "os_name",
-        "platform_machine",
-        "platform_python_implementation",
-        "platform_release",
-        "platform_system",
-        "platform_version",
-        "python_full_version",
-        "python_version",
-        "sys_platform",
-        "extra",
-        "extras",
-        "dependency_groups",
-    }
-)
+_MARKER_VARIABLES = frozenset({
+    "implementation_name",
+    "implementation_version",
+    "os_name",
+    "platform_machine",
+    "platform_python_implementation",
+    "platform_release",
+    "platform_system",
+    "platform_version",
+    "python_full_version",
+    "python_version",
+    "sys_platform",
+    "extra",
+    "extras",
+    "dependency_groups",
+})
 
-_INDETERMINATE_MARKER_VARIABLES = frozenset(
-    {
-        "implementation_version",
-        "python_full_version",
-        "platform_release",
-        "platform_version",
-        "extra",
-        "extras",
-        "dependency_groups",
-    }
-)
+_INDETERMINATE_MARKER_VARIABLES = frozenset({
+    "implementation_version",
+    "python_full_version",
+    "platform_release",
+    "platform_version",
+    "extra",
+    "extras",
+    "dependency_groups",
+})
 
 _LINUX_ARCHITECTURES = (
     "loongarch64",
@@ -153,7 +149,7 @@ _LINUX_ARCHITECTURES = (
 async def check_package(
     requirement_text: str,
     target: TargetEnvironment,
-    pypi_client: PyPIClient,
+    project_source: ProjectSource,
 ) -> PackageCheckResult:
     requirement_text = requirement_text.strip()
 
@@ -224,7 +220,7 @@ async def check_package(
             )
 
     try:
-        project = await pypi_client.get_project(package)
+        project = await project_source.get_project(package)
     except ProjectNotFoundError:
         return _result(
             requirement=requirement_text,

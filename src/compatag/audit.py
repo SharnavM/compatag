@@ -21,7 +21,7 @@ from compatag.manifests import (
     ManifestRequirement,
     ParsedManifest,
 )
-from compatag.pypi import PyPIClient
+from compatag.pypi import ProjectSource
 from compatag.python_compat import (
     PythonSupport,
     evaluate_requires_python,
@@ -121,7 +121,7 @@ class _RequirementKey:
 async def audit_manifest(
     manifest: ParsedManifest,
     target: TargetEnvironment,
-    pypi_client: PyPIClient,
+    project_source: ProjectSource,
     *,
     verbosity: AuditVerbosity = AuditVerbosity.PROBLEMS,
     max_concurrency: int = 8,
@@ -139,7 +139,7 @@ async def audit_manifest(
     checks = await _run_package_checks(
         unique_requirements,
         target,
-        pypi_client,
+        project_source,
         max_concurrency=max_concurrency,
     )
 
@@ -232,7 +232,7 @@ async def _run_package_checks(
         str,
     ],
     target: TargetEnvironment,
-    pypi_client: PyPIClient,
+    project_source: ProjectSource,
     *,
     max_concurrency: int,
 ) -> dict[
@@ -254,7 +254,7 @@ async def _run_package_checks(
             results[key] = await check_package(
                 requirement_text,
                 target,
-                pypi_client,
+                project_source,
             )
 
     async with asyncio.TaskGroup() as group:

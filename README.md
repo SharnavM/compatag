@@ -73,9 +73,13 @@ Implemented:
 - project-wide manifest compatibility auditing;
 - project-level Requires-Python validation;
 - bounded concurrent dependency checks;
-- duplicate-check elimination with source preservation.
+- duplicate-check elimination with source preservation;
+- deployment-target comparison;
+- compatibility regression and improvement detection;
+- selected-version, artifact, and applicability change detection;
+- comparison-scoped PyPI metadata reuse.
 
-Target comparison, CLI analysis commands, and MCP interfaces are still under development.
+CLI analysis commands and MCP interfaces are still under development.
 
 ## License
 

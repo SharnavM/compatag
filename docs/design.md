@@ -219,3 +219,33 @@ The audit layer does not:
 - resolve transitive dependency graphs.
 
 Known requirements remain auditable even when the source manifest is incomplete.
+
+## Target comparison boundary
+
+Target migration analysis is implemented in `compare.py`.
+
+```text
+ParsedManifest
+     |
+     +--------> audit(from_target)
+     |
+     +--------> audit(to_target)
+                    |
+                    v
+               comparison
+```
+
+Target comparison owns:
+
+- directional compatibility impact;
+- version-change detection;
+- artifact-change detection;
+- applicability-change detection;
+- project Requires-Python comparison;
+- comparison-level outcome;
+- comparison verbosity;
+- operation-scoped project metadata reuse.
+
+Target comparison does not implement package compatibility rules.
+
+Both target audits share project metadata while independently evaluating compatibility for their respective targets.
