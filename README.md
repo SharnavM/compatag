@@ -17,6 +17,28 @@ Compatag will expose the same compatibility engine through:
 
 The MCP interface is intended to work with standards-compliant MCP clients, including Claude Code and Codex CLI.
 
+## CLI
+
+Check one package:
+
+```cmd
+compatag check "numpy>=2,<3" --python 3.11 --platform manylinux_2_17_aarch64
+```
+
+Audit a project:
+
+```cmd
+compatag audit requirements.txt --python 3.11 --platform manylinux_2_17_aarch64
+```
+
+Compare deployment targets:
+
+```cmd
+compatag compare requirements.txt --from-python 3.11 --from-platform win_amd64 --to-python 3.11 --to-platform manylinux_2_17_aarch64
+```
+
+Add `--json` to any analysis command for structured output.
+
 ## Scope
 
 Compatag will inspect package metadata, Python version requirements, distribution artifacts,
@@ -53,10 +75,6 @@ python -m mypy src
 
 Pre-alpha.
 
-## Status
-
-Pre-alpha.
-
 Implemented:
 
 - deployment target modelling;
@@ -64,22 +82,18 @@ Implemented:
 - asynchronous PyPI Simple API retrieval;
 - published distribution classification and metadata normalization;
 - single-package compatibility analysis;
-- PEP 440 release selection and prerelease handling;
-- environment-marker and Requires-Python evaluation;
-- wheel, source-build, and yanked-artifact classification;
-- requirements.txt dependency parsing;
-- PEP 621 pyproject.toml dependency parsing;
-- optional dependency selection and dynamic-metadata detection;
-- project-wide manifest compatibility auditing;
-- project-level Requires-Python validation;
-- bounded concurrent dependency checks;
-- duplicate-check elimination with source preservation;
-- deployment-target comparison;
-- compatibility regression and improvement detection;
-- selected-version, artifact, and applicability change detection;
-- comparison-scoped PyPI metadata reuse.
+- requirements.txt and PEP 621 pyproject.toml parsing;
+- project-wide compatibility auditing;
+- target-to-target compatibility comparison;
+- bounded asynchronous PyPI analysis;
+- CLI package checks;
+- CLI manifest audits;
+- CLI target comparisons;
+- structured JSON CLI output;
+- CI-friendly exit-code semantics.
 
-CLI analysis commands and MCP interfaces are still under development.
+MCP interfaces, public packaging, and remote deployment are still under
+development.
 
 ## License
 

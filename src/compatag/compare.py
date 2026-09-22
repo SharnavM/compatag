@@ -13,7 +13,6 @@ from compatag.analyzer import (
 from compatag.audit import (
     AuditCounts,
     AuditVerbosity,
-    ManifestAuditResult,
     ProjectPythonCheck,
     audit_manifest,
 )

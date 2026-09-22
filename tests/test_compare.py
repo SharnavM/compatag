@@ -2,7 +2,6 @@ import asyncio
 
 import pytest
 
-from compatag.analyzer import CheckSeverity
 from compatag.compare import (
     ComparisonImpact,
     ComparisonOutcome,
@@ -119,21 +118,23 @@ _WIN_312 = TargetEnvironment(
 async def test_platform_wheel_change_does_not_imply_regression() -> None:
     manifest = parse_requirements("demo\n")
 
-    source = StubProjectSource({
-        "demo": _project(
-            "demo",
-            (
-                _wheel(
-                    "demo",
-                    tag="cp311-cp311-win_amd64",
-                ),
-                _wheel(
-                    "demo",
-                    tag=("cp311-cp311-manylinux_2_17_x86_64"),
+    source = StubProjectSource(
+        {
+            "demo": _project(
+                "demo",
+                (
+                    _wheel(
+                        "demo",
+                        tag="cp311-cp311-win_amd64",
+                    ),
+                    _wheel(
+                        "demo",
+                        tag=("cp311-cp311-manylinux_2_17_x86_64"),
+                    ),
                 ),
             ),
-        ),
-    })
+        }
+    )
 
     result = await compare_targets(
         manifest,
@@ -157,18 +158,20 @@ async def test_platform_wheel_change_does_not_imply_regression() -> None:
 async def test_wheel_to_source_build_is_regression() -> None:
     manifest = parse_requirements("demo\n")
 
-    source = StubProjectSource({
-        "demo": _project(
-            "demo",
-            (
-                _wheel(
-                    "demo",
-                    tag="cp311-cp311-win_amd64",
+    source = StubProjectSource(
+        {
+            "demo": _project(
+                "demo",
+                (
+                    _wheel(
+                        "demo",
+                        tag="cp311-cp311-win_amd64",
+                    ),
+                    _sdist("demo"),
                 ),
-                _sdist("demo"),
             ),
-        ),
-    })
+        }
+    )
 
     result = await compare_targets(
         manifest,
@@ -190,18 +193,20 @@ async def test_wheel_to_source_build_is_regression() -> None:
 async def test_source_build_to_wheel_is_improvement() -> None:
     manifest = parse_requirements("demo\n")
 
-    source = StubProjectSource({
-        "demo": _project(
-            "demo",
-            (
-                _wheel(
-                    "demo",
-                    tag="cp311-cp311-win_amd64",
+    source = StubProjectSource(
+        {
+            "demo": _project(
+                "demo",
+                (
+                    _wheel(
+                        "demo",
+                        tag="cp311-cp311-win_amd64",
+                    ),
+                    _sdist("demo"),
                 ),
-                _sdist("demo"),
             ),
-        ),
-    })
+        }
+    )
 
     result = await compare_targets(
         manifest,
@@ -219,28 +224,30 @@ async def test_source_build_to_wheel_is_improvement() -> None:
 async def test_improvement_and_regression_produce_mixed_outcome() -> None:
     manifest = parse_requirements("alpha\nbeta\n")
 
-    source = StubProjectSource({
-        "alpha": _project(
-            "alpha",
-            (
-                _wheel(
-                    "alpha",
-                    tag="cp311-cp311-win_amd64",
+    source = StubProjectSource(
+        {
+            "alpha": _project(
+                "alpha",
+                (
+                    _wheel(
+                        "alpha",
+                        tag="cp311-cp311-win_amd64",
+                    ),
+                    _sdist("alpha"),
                 ),
-                _sdist("alpha"),
             ),
-        ),
-        "beta": _project(
-            "beta",
-            (
-                _wheel(
-                    "beta",
-                    tag=("cp311-cp311-manylinux_2_17_x86_64"),
+            "beta": _project(
+                "beta",
+                (
+                    _wheel(
+                        "beta",
+                        tag=("cp311-cp311-manylinux_2_17_x86_64"),
+                    ),
+                    _sdist("beta"),
                 ),
-                _sdist("beta"),
             ),
-        ),
-    })
+        }
+    )
 
     result = await compare_targets(
         manifest,
@@ -280,18 +287,20 @@ async def test_unknown_result_makes_comparison_indeterminate() -> None:
 async def test_improvement_in_incomplete_manifest_remains_indeterminate() -> None:
     manifest = parse_requirements("demo\n-r private.txt\n")
 
-    source = StubProjectSource({
-        "demo": _project(
-            "demo",
-            (
-                _wheel(
-                    "demo",
-                    tag="cp311-cp311-win_amd64",
+    source = StubProjectSource(
+        {
+            "demo": _project(
+                "demo",
+                (
+                    _wheel(
+                        "demo",
+                        tag="cp311-cp311-win_amd64",
+                    ),
+                    _sdist("demo"),
                 ),
-                _sdist("demo"),
             ),
-        ),
-    })
+        }
+    )
 
     result = await compare_targets(
         manifest,
@@ -309,18 +318,20 @@ async def test_improvement_in_incomplete_manifest_remains_indeterminate() -> Non
 async def test_regression_in_incomplete_manifest_is_still_regression() -> None:
     manifest = parse_requirements("demo\n-r private.txt\n")
 
-    source = StubProjectSource({
-        "demo": _project(
-            "demo",
-            (
-                _wheel(
-                    "demo",
-                    tag="cp311-cp311-win_amd64",
+    source = StubProjectSource(
+        {
+            "demo": _project(
+                "demo",
+                (
+                    _wheel(
+                        "demo",
+                        tag="cp311-cp311-win_amd64",
+                    ),
+                    _sdist("demo"),
                 ),
-                _sdist("demo"),
             ),
-        ),
-    })
+        }
+    )
 
     result = await compare_targets(
         manifest,
@@ -343,12 +354,14 @@ dependencies = ["demo"]
 """
     )
 
-    source = StubProjectSource({
-        "demo": _project(
-            "demo",
-            (_wheel("demo"),),
-        ),
-    })
+    source = StubProjectSource(
+        {
+            "demo": _project(
+                "demo",
+                (_wheel("demo"),),
+            ),
+        }
+    )
 
     result = await compare_targets(
         manifest,
@@ -366,12 +379,14 @@ dependencies = ["demo"]
 async def test_applicability_change_is_recorded_without_severity_regression() -> None:
     manifest = parse_requirements('demo; sys_platform == "win32"\n')
 
-    source = StubProjectSource({
-        "demo": _project(
-            "demo",
-            (_wheel("demo"),),
-        ),
-    })
+    source = StubProjectSource(
+        {
+            "demo": _project(
+                "demo",
+                (_wheel("demo"),),
+            ),
+        }
+    )
 
     result = await compare_targets(
         manifest,
@@ -395,23 +410,25 @@ async def test_applicability_change_is_recorded_without_severity_regression() ->
 async def test_selected_version_change_is_recorded_without_severity_change() -> None:
     manifest = parse_requirements("demo\n")
 
-    source = StubProjectSource({
-        "demo": _project(
-            "demo",
-            (
-                _wheel(
-                    "demo",
-                    version="1.0",
-                    requires_python=">=3.10",
-                ),
-                _wheel(
-                    "demo",
-                    version="2.0",
-                    requires_python=">=3.12",
+    source = StubProjectSource(
+        {
+            "demo": _project(
+                "demo",
+                (
+                    _wheel(
+                        "demo",
+                        version="1.0",
+                        requires_python=">=3.10",
+                    ),
+                    _wheel(
+                        "demo",
+                        version="2.0",
+                        requires_python=">=3.12",
+                    ),
                 ),
             ),
-        ),
-    })
+        }
+    )
 
     result = await compare_targets(
         manifest,
@@ -464,12 +481,14 @@ async def test_project_metadata_is_requested_once_across_both_targets() -> None:
 async def test_changes_verbosity_hides_identical_clean_result() -> None:
     manifest = parse_requirements("demo\n")
 
-    source = StubProjectSource({
-        "demo": _project(
-            "demo",
-            (_wheel("demo"),),
-        ),
-    })
+    source = StubProjectSource(
+        {
+            "demo": _project(
+                "demo",
+                (_wheel("demo"),),
+            ),
+        }
+    )
 
     result = await compare_targets(
         manifest,
@@ -489,12 +508,14 @@ async def test_changes_verbosity_hides_identical_clean_result() -> None:
 async def test_all_verbosity_keeps_identical_clean_result() -> None:
     manifest = parse_requirements("demo\n")
 
-    source = StubProjectSource({
-        "demo": _project(
-            "demo",
-            (_wheel("demo"),),
-        ),
-    })
+    source = StubProjectSource(
+        {
+            "demo": _project(
+                "demo",
+                (_wheel("demo"),),
+            ),
+        }
+    )
 
     result = await compare_targets(
         manifest,
@@ -513,17 +534,19 @@ async def test_all_verbosity_keeps_identical_clean_result() -> None:
 async def test_comparison_order_follows_manifest_order() -> None:
     manifest = parse_requirements("alpha\nbeta\ngamma\n")
 
-    source = StubProjectSource({
-        name: _project(
-            name,
-            (_wheel(name),),
-        )
-        for name in (
-            "alpha",
-            "beta",
-            "gamma",
-        )
-    })
+    source = StubProjectSource(
+        {
+            name: _project(
+                name,
+                (_wheel(name),),
+            )
+            for name in (
+                "alpha",
+                "beta",
+                "gamma",
+            )
+        }
+    )
 
     result = await compare_targets(
         manifest,
@@ -544,21 +567,23 @@ async def test_comparison_order_follows_manifest_order() -> None:
 async def test_counts_track_operational_changes_separately() -> None:
     manifest = parse_requirements("demo\n")
 
-    source = StubProjectSource({
-        "demo": _project(
-            "demo",
-            (
-                _wheel(
-                    "demo",
-                    tag="cp311-cp311-win_amd64",
-                ),
-                _wheel(
-                    "demo",
-                    tag=("cp311-cp311-manylinux_2_17_x86_64"),
+    source = StubProjectSource(
+        {
+            "demo": _project(
+                "demo",
+                (
+                    _wheel(
+                        "demo",
+                        tag="cp311-cp311-win_amd64",
+                    ),
+                    _wheel(
+                        "demo",
+                        tag=("cp311-cp311-manylinux_2_17_x86_64"),
+                    ),
                 ),
             ),
-        ),
-    })
+        }
+    )
 
     result = await compare_targets(
         manifest,

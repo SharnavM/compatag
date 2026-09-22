@@ -106,32 +106,36 @@ class _ReleaseEvaluation:
     uncertainty: _Uncertainty | None = None
 
 
-_MARKER_VARIABLES = frozenset({
-    "implementation_name",
-    "implementation_version",
-    "os_name",
-    "platform_machine",
-    "platform_python_implementation",
-    "platform_release",
-    "platform_system",
-    "platform_version",
-    "python_full_version",
-    "python_version",
-    "sys_platform",
-    "extra",
-    "extras",
-    "dependency_groups",
-})
+_MARKER_VARIABLES = frozenset(
+    {
+        "implementation_name",
+        "implementation_version",
+        "os_name",
+        "platform_machine",
+        "platform_python_implementation",
+        "platform_release",
+        "platform_system",
+        "platform_version",
+        "python_full_version",
+        "python_version",
+        "sys_platform",
+        "extra",
+        "extras",
+        "dependency_groups",
+    }
+)
 
-_INDETERMINATE_MARKER_VARIABLES = frozenset({
-    "implementation_version",
-    "python_full_version",
-    "platform_release",
-    "platform_version",
-    "extra",
-    "extras",
-    "dependency_groups",
-})
+_INDETERMINATE_MARKER_VARIABLES = frozenset(
+    {
+        "implementation_version",
+        "python_full_version",
+        "platform_release",
+        "platform_version",
+        "extra",
+        "extras",
+        "dependency_groups",
+    }
+)
 
 _LINUX_ARCHITECTURES = (
     "loongarch64",

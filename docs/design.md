@@ -249,3 +249,39 @@ Target comparison owns:
 Target comparison does not implement package compatibility rules.
 
 Both target audits share project metadata while independently evaluating compatibility for their respective targets.
+
+## CLI boundary
+
+The command-line adapter lives in `cli.py`.
+
+```text
+shell arguments
+      |
+      v
+    cli.py
+      |
+      +----> manifest parser
+      +----> target model
+      +----> package analyzer
+      +----> manifest audit
+      +----> target comparison
+```
+
+The CLI owns:
+
+- argument parsing;
+- manifest file loading;
+- manifest-type detection;
+- human-readable presentation;
+- JSON serialization selection;
+- process exit-code mapping.
+
+The CLI does not own:
+
+- requirement parsing;
+- compatibility-tag generation;
+- release selection;
+- Requires-Python semantics;
+- PyPI response interpretation;
+- manifest audit aggregation;
+- target-comparison semantics.
