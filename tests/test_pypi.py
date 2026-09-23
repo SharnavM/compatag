@@ -1,6 +1,9 @@
+import asyncio
+
 import httpx
 import pytest
 
+import compatag.pypi as pypi_module
 from compatag.distributions import (
     DistributionKind,
 )
@@ -14,6 +17,12 @@ from compatag.pypi import (
 )
 
 _SIMPLE_JSON = "application/vnd.pypi.simple.v1+json"
+
+
+class _OversizedStream(httpx.AsyncByteStream):
+    async def __aiter__(self):
+        yield b"x" * 40
+        yield b"y" * 40
 
 
 def _project_payload() -> dict[str, object]:
@@ -358,5 +367,153 @@ async def test_mismatched_response_project_is_rejected() -> None:
         with pytest.raises(
             PyPIResponseError,
             match=("while 'demo-project' was requested"),
+        ):
+            await client.get_project("demo-project")
+
+
+@pytest.mark.asyncio
+async def test_repeated_project_lookup_uses_cache() -> None:
+    request_count = 0
+
+    def handler(
+        request: httpx.Request,
+    ) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+
+        return _json_response(_project_payload())
+
+    transport = httpx.MockTransport(handler)
+
+    async with httpx.AsyncClient(transport=transport) as http_client:
+        client = PyPIClient(http_client=http_client)
+
+        first = await client.get_project("demo-project")
+
+        second = await client.get_project("demo-project")
+
+    assert request_count == 1
+    assert first == second
+
+
+@pytest.mark.asyncio
+async def test_concurrent_project_lookup_is_coalesced() -> None:
+    request_count = 0
+
+    def handler(
+        request: httpx.Request,
+    ) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+
+        return _json_response(_project_payload())
+
+    transport = httpx.MockTransport(handler)
+
+    async with httpx.AsyncClient(transport=transport) as http_client:
+        client = PyPIClient(http_client=http_client)
+
+        first, second = await asyncio.gather(
+            client.get_project("demo-project"),
+            client.get_project("demo-project"),
+        )
+
+    assert request_count == 1
+    assert first == second
+
+
+@pytest.mark.asyncio
+async def test_project_cache_expires(
+    monkeypatch,
+) -> None:
+    request_count = 0
+    now = [1000.0]
+
+    monkeypatch.setattr(
+        pypi_module.time,
+        "monotonic",
+        lambda: now[0],
+    )
+
+    def handler(
+        request: httpx.Request,
+    ) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+
+        return _json_response(_project_payload())
+
+    transport = httpx.MockTransport(handler)
+
+    async with httpx.AsyncClient(transport=transport) as http_client:
+        client = PyPIClient(
+            http_client=http_client,
+            cache_ttl_seconds=10.0,
+        )
+
+        await client.get_project("demo-project")
+
+        now[0] += 11.0
+
+        await client.get_project("demo-project")
+
+    assert request_count == 2
+
+
+@pytest.mark.asyncio
+async def test_declared_oversized_response_is_rejected() -> None:
+    def handler(
+        request: httpx.Request,
+    ) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=b"{}",
+            headers={
+                "Content-Type": _SIMPLE_JSON,
+                "Content-Length": "1000",
+            },
+            request=request,
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    async with httpx.AsyncClient(transport=transport) as http_client:
+        client = PyPIClient(
+            http_client=http_client,
+            max_response_bytes=64,
+        )
+
+        with pytest.raises(
+            PyPIResponseError,
+            match="response limit",
+        ):
+            await client.get_project("demo-project")
+
+
+@pytest.mark.asyncio
+async def test_streamed_oversized_response_is_rejected() -> None:
+    def handler(
+        request: httpx.Request,
+    ) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={
+                "Content-Type": _SIMPLE_JSON,
+            },
+            stream=_OversizedStream(),
+            request=request,
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    async with httpx.AsyncClient(transport=transport) as http_client:
+        client = PyPIClient(
+            http_client=http_client,
+            max_response_bytes=64,
+        )
+
+        with pytest.raises(
+            PyPIResponseError,
+            match="response limit",
         ):
             await client.get_project("demo-project")

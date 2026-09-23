@@ -1,5 +1,10 @@
+import sys
+
 import pytest
-from mcp import Client
+from mcp import (
+    Client,
+    StdioServerParameters,
+)
 from mcp.types import TextContent
 
 import compatag.mcp_server as mcp_server
@@ -165,12 +170,14 @@ async def test_server_exposes_exactly_three_tools(
 async def test_check_package_returns_structured_output(
     monkeypatch,
 ) -> None:
-    fake_client = FakePyPIClient({
-        "demo": _project(
-            "demo",
-            (_wheel("demo"),),
-        ),
-    })
+    fake_client = FakePyPIClient(
+        {
+            "demo": _project(
+                "demo",
+                (_wheel("demo"),),
+            ),
+        }
+    )
 
     _install_fake_client(
         monkeypatch,
@@ -201,12 +208,14 @@ async def test_check_package_returns_structured_output(
 async def test_audit_manifest_returns_structured_output(
     monkeypatch,
 ) -> None:
-    fake_client = FakePyPIClient({
-        "demo": _project(
-            "demo",
-            (_wheel("demo"),),
-        ),
-    })
+    fake_client = FakePyPIClient(
+        {
+            "demo": _project(
+                "demo",
+                (_wheel("demo"),),
+            ),
+        }
+    )
 
     _install_fake_client(
         monkeypatch,
@@ -238,18 +247,20 @@ async def test_audit_manifest_returns_structured_output(
 async def test_compare_targets_reports_regression(
     monkeypatch,
 ) -> None:
-    fake_client = FakePyPIClient({
-        "demo": _project(
-            "demo",
-            (
-                _wheel(
-                    "demo",
-                    tag=("cp311-cp311-win_amd64"),
+    fake_client = FakePyPIClient(
+        {
+            "demo": _project(
+                "demo",
+                (
+                    _wheel(
+                        "demo",
+                        tag=("cp311-cp311-win_amd64"),
+                    ),
+                    _sdist("demo"),
                 ),
-                _sdist("demo"),
             ),
-        ),
-    })
+        }
+    )
 
     _install_fake_client(
         monkeypatch,
@@ -342,12 +353,14 @@ async def test_invalid_concurrency_is_rejected_by_tool_schema(
 async def test_lifespan_reuses_one_project_source(
     monkeypatch,
 ) -> None:
-    fake_client = FakePyPIClient({
-        "demo": _project(
-            "demo",
-            (_wheel("demo"),),
-        ),
-    })
+    fake_client = FakePyPIClient(
+        {
+            "demo": _project(
+                "demo",
+                (_wheel("demo"),),
+            ),
+        }
+    )
 
     _install_fake_client(
         monkeypatch,
@@ -390,12 +403,14 @@ async def test_lifespan_reuses_one_project_source(
 async def test_compare_reuses_project_lookup_within_call(
     monkeypatch,
 ) -> None:
-    fake_client = FakePyPIClient({
-        "demo": _project(
-            "demo",
-            (_wheel("demo"),),
-        ),
-    })
+    fake_client = FakePyPIClient(
+        {
+            "demo": _project(
+                "demo",
+                (_wheel("demo"),),
+            ),
+        }
+    )
 
     _install_fake_client(
         monkeypatch,
@@ -422,3 +437,87 @@ async def test_compare_reuses_project_lookup_within_call(
     assert not result.is_error
 
     assert fake_client.requests == ["demo"]
+
+
+@pytest.mark.asyncio
+async def test_manifest_requirement_limit_is_enforced(
+    monkeypatch,
+) -> None:
+    fake_client = FakePyPIClient({})
+
+    _install_fake_client(
+        monkeypatch,
+        fake_client,
+    )
+
+    manifest_text = "".join(f"demo-{index}\n" for index in range(101))
+
+    async with Client(mcp_server.mcp) as client:
+        result = await client.call_tool(
+            "audit_manifest",
+            {
+                "manifest_text": manifest_text,
+                "target": {
+                    "python_version": "3.11",
+                    "platform": "win_amd64",
+                },
+            },
+        )
+
+    assert result.is_error
+
+    assert "tool limit is 100" in _text_content(result)
+
+    assert fake_client.requests == []
+
+
+@pytest.mark.asyncio
+async def test_manifest_byte_limit_is_enforced(
+    monkeypatch,
+) -> None:
+    fake_client = FakePyPIClient({})
+
+    _install_fake_client(
+        monkeypatch,
+        fake_client,
+    )
+
+    manifest_text = "# " + ("é" * 70_000)
+
+    async with Client(mcp_server.mcp) as client:
+        result = await client.call_tool(
+            "audit_manifest",
+            {
+                "manifest_text": manifest_text,
+                "target": {
+                    "python_version": "3.11",
+                    "platform": "win_amd64",
+                },
+            },
+        )
+
+    assert result.is_error
+    assert fake_client.requests == []
+
+
+@pytest.mark.asyncio
+async def test_stdio_subprocess_discovers_tools() -> None:
+    server = StdioServerParameters(
+        command=sys.executable,
+        args=[
+            "-m",
+            "compatag.mcp_server",
+        ],
+    )
+
+    async with Client(
+        server,
+        read_timeout_seconds=10.0,
+    ) as client:
+        response = await client.list_tools()
+
+    assert {tool.name for tool in response.tools} == {
+        "check_package",
+        "audit_manifest",
+        "compare_targets",
+    }

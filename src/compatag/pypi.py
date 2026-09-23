@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import re
+import time
 import warnings
+from collections import OrderedDict
+from dataclasses import dataclass
 from datetime import datetime
 from importlib.metadata import version as distribution_version
 from types import TracebackType
@@ -24,6 +29,13 @@ from compatag.distributions import (
     DistributionKind,
     ProjectDistributions,
 )
+from compatag.limits import (
+    PYPI_CACHE_MAX_ENTRIES,
+    PYPI_CACHE_TTL_SECONDS,
+    PYPI_MAX_CONNECTIONS,
+    PYPI_MAX_KEEPALIVE_CONNECTIONS,
+    PYPI_MAX_RESPONSE_BYTES,
+)
 
 _PYPI_SIMPLE_ROOT = "https://pypi.org/simple/"
 _SIMPLE_JSON_MEDIA_TYPE = "application/vnd.pypi.simple.v1+json"
@@ -36,6 +48,11 @@ _API_VERSION_PATTERN = re.compile(r"^(?P<major>\d+)\.(?P<minor>\d+)$")
 _REQUEST_TIMEOUT = httpx.Timeout(
     15.0,
     connect=5.0,
+)
+_HTTP_LIMITS = httpx.Limits(
+    max_connections=PYPI_MAX_CONNECTIONS,
+    max_keepalive_connections=(PYPI_MAX_KEEPALIVE_CONNECTIONS),
+    keepalive_expiry=30.0,
 )
 
 
@@ -123,18 +140,53 @@ class _SimpleProject(BaseModel):
     )
 
 
+@dataclass(frozen=True)
+class _CachedProject:
+    project: ProjectDistributions
+    expires_at: float
+
+
 class PyPIClient:
     def __init__(
         self,
         *,
         http_client: httpx.AsyncClient | None = None,
+        cache_ttl_seconds: float = (PYPI_CACHE_TTL_SECONDS),
+        cache_max_entries: int = (PYPI_CACHE_MAX_ENTRIES),
+        max_response_bytes: int = (PYPI_MAX_RESPONSE_BYTES),
     ) -> None:
+        if cache_ttl_seconds < 0:
+            raise ValueError("cache_ttl_seconds cannot be negative")
+
+        if cache_max_entries < 0:
+            raise ValueError("cache_max_entries cannot be negative")
+
+        if max_response_bytes < 1:
+            raise ValueError("max_response_bytes must be positive")
+
         self._owns_http_client = http_client is None
 
         self._http_client = http_client or httpx.AsyncClient(
             timeout=_REQUEST_TIMEOUT,
+            limits=_HTTP_LIMITS,
             follow_redirects=True,
         )
+
+        self._cache_ttl_seconds = cache_ttl_seconds
+
+        self._cache_max_entries = cache_max_entries
+
+        self._max_response_bytes = max_response_bytes
+
+        self._project_cache: OrderedDict[
+            str,
+            _CachedProject,
+        ] = OrderedDict()
+
+        self._inflight_requests: dict[
+            str,
+            asyncio.Task[ProjectDistributions],
+        ] = {}
 
     async def __aenter__(self) -> Self:
         return self
@@ -148,8 +200,171 @@ class PyPIClient:
         await self.aclose()
 
     async def aclose(self) -> None:
+        pending = tuple(self._inflight_requests.values())
+
+        for task in pending:
+            task.cancel()
+
+        if pending:
+            await asyncio.gather(
+                *pending,
+                return_exceptions=True,
+            )
+
+        self._inflight_requests.clear()
+        self._project_cache.clear()
+
         if self._owns_http_client:
             await self._http_client.aclose()
+
+    @staticmethod
+    async def _read_response_body(
+        response: httpx.Response,
+        max_bytes: int,
+    ) -> bytes:
+        content_length = response.headers.get("content-length")
+
+        if content_length is not None:
+            try:
+                declared_size = int(content_length)
+            except ValueError:
+                declared_size = None
+
+            if declared_size is not None and declared_size > max_bytes:
+                raise PyPIResponseError(
+                    f"PyPI response exceeds the {max_bytes}-byte response limit"
+                )
+
+        body = bytearray()
+
+        async for chunk in response.aiter_bytes():
+            if len(body) + len(chunk) > max_bytes:
+                raise PyPIResponseError(
+                    f"PyPI response exceeds the {max_bytes}-byte response limit"
+                )
+
+            body.extend(chunk)
+
+        return bytes(body)
+
+    async def _fetch_project(
+        self,
+        normalized_name: str,
+    ) -> ProjectDistributions:
+        project_url = f"{_PYPI_SIMPLE_ROOT}{normalized_name}/"
+
+        try:
+            async with self._http_client.stream(
+                "GET",
+                project_url,
+                headers=_request_headers(),
+            ) as response:
+                if response.status_code == httpx.codes.NOT_FOUND:
+                    raise ProjectNotFoundError(f"project '{normalized_name}' was not found on PyPI")
+
+                try:
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as exc:
+                    raise PyPIRequestError(
+                        f"PyPI returned HTTP {response.status_code} for project '{normalized_name}'"
+                    ) from exc
+
+                _require_simple_json(response)
+
+                body = await self._read_response_body(
+                    response,
+                    self._max_response_bytes,
+                )
+
+                try:
+                    payload = _SimpleProject.model_validate(json.loads(body))
+                except (
+                    ValueError,
+                    ValidationError,
+                ) as exc:
+                    raise PyPIResponseError(
+                        f"PyPI returned invalid project data for '{normalized_name}'"
+                    ) from exc
+
+                _check_api_version(payload.meta.api_version)
+
+                _check_response_name(
+                    payload.name,
+                    normalized_name,
+                )
+
+                return _build_project(
+                    payload,
+                    response,
+                )
+
+        except PyPIError:
+            raise
+        except httpx.RequestError as exc:
+            raise PyPIRequestError(
+                f"failed to query PyPI for project '{normalized_name}': {exc}"
+            ) from exc
+
+    def _cached_project(
+        self,
+        name: str,
+    ) -> ProjectDistributions | None:
+        entry = self._project_cache.get(name)
+
+        if entry is None:
+            return None
+
+        if entry.expires_at <= time.monotonic():
+            del self._project_cache[name]
+            return None
+
+        self._project_cache.move_to_end(name)
+
+        return entry.project
+
+    def _cache_project(
+        self,
+        name: str,
+        project: ProjectDistributions,
+    ) -> None:
+        if self._cache_ttl_seconds == 0 or self._cache_max_entries == 0:
+            return
+
+        self._project_cache[name] = _CachedProject(
+            project=project,
+            expires_at=(time.monotonic() + self._cache_ttl_seconds),
+        )
+
+        self._project_cache.move_to_end(name)
+
+        while len(self._project_cache) > self._cache_max_entries:
+            self._project_cache.popitem(last=False)
+
+    def _finish_project_request(
+        self,
+        name: str,
+        task: asyncio.Task[ProjectDistributions],
+    ) -> None:
+        current = self._inflight_requests.get(name)
+
+        if current is task:
+            self._inflight_requests.pop(
+                name,
+                None,
+            )
+
+        if task.cancelled():
+            return
+
+        try:
+            project = task.result()
+        except Exception:
+            return
+
+        self._cache_project(
+            name,
+            project,
+        )
 
     async def get_project(
         self,
@@ -157,48 +372,32 @@ class PyPIClient:
     ) -> ProjectDistributions:
         normalized_name = _normalize_project_name(name)
 
-        project_url = f"{_PYPI_SIMPLE_ROOT}{normalized_name}/"
+        cached = self._cached_project(normalized_name)
 
-        try:
-            response = await self._http_client.get(
-                project_url,
-                headers=_request_headers(),
+        if cached is not None:
+            return cached
+
+        task = self._inflight_requests.get(normalized_name)
+
+        if task is None:
+            task = asyncio.create_task(
+                self._fetch_project(normalized_name),
+                name=f"compatag-pypi:{normalized_name}",
             )
-        except httpx.RequestError as exc:
-            raise PyPIRequestError(
-                f"failed to query PyPI for project '{normalized_name}': {exc}"
-            ) from exc
 
-        if response.status_code == httpx.codes.NOT_FOUND:
-            raise ProjectNotFoundError(f"project '{normalized_name}' was not found on PyPI")
+            self._inflight_requests[normalized_name] = task
 
-        try:
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            raise PyPIRequestError(
-                f"PyPI returned HTTP {response.status_code} for project '{normalized_name}'"
-            ) from exc
+            def finish_request(
+                completed: asyncio.Task[ProjectDistributions],
+            ) -> None:
+                self._finish_project_request(
+                    normalized_name,
+                    completed,
+                )
 
-        _require_simple_json(response)
+            task.add_done_callback(finish_request)
 
-        try:
-            payload = _SimpleProject.model_validate(response.json())
-        except (ValueError, ValidationError) as exc:
-            raise PyPIResponseError(
-                f"PyPI returned invalid project data for '{normalized_name}'"
-            ) from exc
-
-        _check_api_version(payload.meta.api_version)
-
-        _check_response_name(
-            payload.name,
-            normalized_name,
-        )
-
-        return _build_project(
-            payload,
-            response,
-        )
+        return await asyncio.shield(task)
 
 
 def _normalize_project_name(name: str) -> str:

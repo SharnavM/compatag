@@ -32,6 +32,16 @@ from compatag.compare import (
 from compatag.compare import (
     compare_targets as run_target_comparison,
 )
+from compatag.limits import (
+    MAX_ANALYSIS_CONCURRENCY,
+    MAX_EXTRA_GROUPS,
+    MAX_EXTRA_NAME_LENGTH,
+    MAX_MANIFEST_BYTES,
+    MAX_REQUIREMENT_TEXT_LENGTH,
+    ResourceLimitError,
+    validate_manifest_payload,
+    validate_manifest_requirement_count,
+)
 from compatag.manifests import (
     ManifestFormat,
     ParsedManifest,
@@ -48,6 +58,7 @@ RequirementText = Annotated[
     str,
     Field(
         min_length=1,
+        max_length=MAX_REQUIREMENT_TEXT_LENGTH,
         description=("A PEP 508 Python requirement, for example 'numpy>=2,<3'."),
     ),
 ]
@@ -56,6 +67,7 @@ ManifestText = Annotated[
     str,
     Field(
         min_length=1,
+        max_length=MAX_MANIFEST_BYTES,
         description=("The full dependency manifest contents. Pass text, not a filesystem path."),
     ),
 ]
@@ -64,8 +76,24 @@ ConcurrencyLimit = Annotated[
     int,
     Field(
         ge=1,
-        le=32,
+        le=MAX_ANALYSIS_CONCURRENCY,
         description=("Maximum number of package checks allowed to run concurrently."),
+    ),
+]
+
+ExtraName = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=MAX_EXTRA_NAME_LENGTH,
+    ),
+]
+
+
+ExtraSelection = Annotated[
+    list[ExtraName],
+    Field(
+        max_length=MAX_EXTRA_GROUPS,
     ),
 ]
 
@@ -147,7 +175,7 @@ async def audit_manifest(
     target: TargetEnvironment,
     ctx: Context[ServerContext],
     manifest_type: ManifestFormat = ManifestFormat.REQUIREMENTS,
-    extras: list[str] | None = None,
+    extras: ExtraSelection | None = None,
     verbosity: AuditVerbosity = AuditVerbosity.PROBLEMS,
     max_concurrency: ConcurrencyLimit = 8,
 ) -> ManifestAuditResult:
@@ -183,7 +211,7 @@ async def compare_targets(
     to_target: TargetEnvironment,
     ctx: Context[ServerContext],
     manifest_type: ManifestFormat = ManifestFormat.REQUIREMENTS,
-    extras: list[str] | None = None,
+    extras: ExtraSelection | None = None,
     verbosity: ComparisonVerbosity = ComparisonVerbosity.CHANGES,
     max_concurrency: ConcurrencyLimit = 8,
 ) -> TargetComparisonResult:
@@ -208,18 +236,30 @@ def _parse_manifest(
     manifest_type: ManifestFormat,
     extras: list[str] | None,
 ) -> ParsedManifest:
+    try:
+        validate_manifest_payload(manifest_text)
+    except ResourceLimitError as exc:
+        raise ToolError(str(exc)) from exc
+
     selected_extras = tuple(extras or ())
 
     if manifest_type is ManifestFormat.REQUIREMENTS:
         if selected_extras:
             raise ToolError("extras can only be selected for pyproject manifests")
 
-        return parse_requirements(manifest_text)
+        manifest = parse_requirements(manifest_text)
+    else:
+        manifest = parse_pyproject(
+            manifest_text,
+            extras=selected_extras,
+        )
 
-    return parse_pyproject(
-        manifest_text,
-        extras=selected_extras,
-    )
+    try:
+        validate_manifest_requirement_count(len(manifest.requirements))
+    except ResourceLimitError as exc:
+        raise ToolError(str(exc)) from exc
+
+    return manifest
 
 
 def main() -> None:

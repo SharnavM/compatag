@@ -327,3 +327,28 @@ The MCP adapter does not own:
 Manifest tools receive text rather than filesystem paths.
 
 The initial transport is stdio.
+
+## Runtime hardening boundary
+
+Hard workload limits are centralized rather than duplicated across adapters.
+
+```text
+CLI ----------+
+              |
+MCP ----------+----> core analysis limits
+              |
+Python API ---+
+
+PyPIClient
+    |
+    +---- bounded connection pool
+    +---- bounded response body
+    +---- successful-response cache
+    +---- in-flight request coalescing
+```
+
+Manifest byte and requirement-count limits are transport-facing workload
+guards. They do not redefine the manifest formats understood by Compatag.
+
+The PyPI cache is process-local and correctness must not depend on cache
+presence.

@@ -115,6 +115,11 @@ Implemented:
 - local MCP stdio server;
 - structured MCP output;
 - Codex-compatible MCP tool schemas.
+- bounded analysis concurrency and MCP workload limits;
+- bounded PyPI response and connection resources;
+- in-memory PyPI metadata caching and request coalescing;
+- Windows and Ubuntu CI across Python 3.11–3.14;
+- real stdio MCP subprocess regression testing.
 
 Remote MCP deployment, hardening, CI/release automation, and the public v0.1.0 package release are still under development.
 

@@ -25,6 +25,9 @@ from compatag.compare import (
     TargetComparisonResult,
     compare_targets,
 )
+from compatag.limits import (
+    ResourceLimitError,
+)
 from compatag.manifests import (
     ManifestFormat,
     ManifestIssue,
@@ -217,7 +220,10 @@ def main(
 
         raise CLIError(f"unknown command: {args.command}")
 
-    except CLIError as exc:
+    except (
+        CLIError,
+        ResourceLimitError,
+    ) as exc:
         print(
             f"compatag: error: {exc}",
             file=sys.stderr,

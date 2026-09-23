@@ -13,6 +13,9 @@ from compatag.analyzer import (
     PackageCheckResult,
     check_package,
 )
+from compatag.limits import (
+    validate_analysis_concurrency,
+)
 from compatag.manifests import (
     ManifestFormat,
     ManifestIssue,
@@ -126,8 +129,7 @@ async def audit_manifest(
     verbosity: AuditVerbosity = AuditVerbosity.PROBLEMS,
     max_concurrency: int = 8,
 ) -> ManifestAuditResult:
-    if max_concurrency < 1:
-        raise ValueError("max_concurrency must be at least 1")
+    validate_analysis_concurrency(max_concurrency)
 
     project_python = _check_project_python(
         manifest,

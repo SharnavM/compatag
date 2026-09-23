@@ -586,18 +586,27 @@ async def test_manifest_warning_makes_clean_audit_warn() -> None:
 
 
 @pytest.mark.asyncio
-async def test_invalid_concurrency_limit_is_rejected() -> None:
+@pytest.mark.parametrize(
+    "max_concurrency",
+    [
+        0,
+        33,
+    ],
+)
+async def test_invalid_concurrency_limit_is_rejected(
+    max_concurrency: int,
+) -> None:
     manifest = parse_requirements("demo\n")
 
     client = StubPyPIClient({})
 
     with pytest.raises(
         ValueError,
-        match="at least 1",
+        match="between 1 and 32",
     ):
         await audit_manifest(
             manifest,
             _WIN_311,
             client,  # type: ignore[arg-type]
-            max_concurrency=0,
+            max_concurrency=max_concurrency,
         )
