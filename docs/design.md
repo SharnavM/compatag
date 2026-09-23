@@ -285,3 +285,45 @@ The CLI does not own:
 - PyPI response interpretation;
 - manifest audit aggregation;
 - target-comparison semantics.
+
+## MCP boundary
+
+The local MCP adapter lives in `mcp_server.py`.
+
+```text
+MCP client
+    |
+    v
+mcp_server.py
+    |
+    +----> analyzer.py
+    +----> manifests.py
+    +----> audit.py
+    +----> compare.py
+    |
+    v
+shared ProjectSource
+```
+
+The MCP adapter owns:
+
+- MCP tool registration;
+- input-schema descriptions and constraints;
+- server-wide instructions;
+- tool annotations;
+- server lifespan;
+- transport startup;
+- MCP-specific argument validation.
+
+The MCP adapter does not own:
+
+- package release selection;
+- wheel compatibility;
+- Requires-Python evaluation;
+- manifest grammar;
+- audit aggregation;
+- target comparison semantics.
+
+Manifest tools receive text rather than filesystem paths.
+
+The initial transport is stdio.

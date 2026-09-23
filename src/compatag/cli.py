@@ -181,6 +181,11 @@ def build_parser() -> ArgumentParser:
         help="Emit structured JSON output.",
     )
 
+    subparsers.add_parser(
+        "mcp",
+        help="Run the local MCP server over stdio.",
+    )
+
     return parser
 
 
@@ -192,6 +197,12 @@ def main(
 
     if args.command is None:
         parser.print_help()
+        return 0
+
+    if args.command == "mcp":
+        from compatag.mcp_server import main as run_mcp_server
+
+        run_mcp_server()
         return 0
 
     try:

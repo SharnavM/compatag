@@ -39,6 +39,32 @@ compatag compare requirements.txt --from-python 3.11 --from-platform win_amd64 -
 
 Add `--json` to any analysis command for structured output.
 
+## MCP
+
+Compatag can run as a local MCP server over stdio:
+
+```cmd
+compatag-mcp
+```
+
+It exposes three read-only tools:
+
+```text
+check_package
+audit_manifest
+compare_targets
+```
+
+The MCP tools use the same deterministic compatibility engine as the CLI.
+
+Example Codex use cases include:
+
+- checking a package before adding or upgrading it;
+- auditing a project's direct Python dependencies before deployment;
+- comparing dependency compatibility before changing Python version or deployment platform.
+
+Manifest tools accept manifest contents rather than filesystem paths.
+
 ## Scope
 
 Compatag will inspect package metadata, Python version requirements, distribution artifacts,
@@ -80,20 +106,17 @@ Implemented:
 - deployment target modelling;
 - cross-platform wheel compatibility-tag generation;
 - asynchronous PyPI Simple API retrieval;
-- published distribution classification and metadata normalization;
 - single-package compatibility analysis;
 - requirements.txt and PEP 621 pyproject.toml parsing;
 - project-wide compatibility auditing;
-- target-to-target compatibility comparison;
-- bounded asynchronous PyPI analysis;
-- CLI package checks;
-- CLI manifest audits;
-- CLI target comparisons;
+- deployment-target comparison;
+- command-line package, audit, and comparison workflows;
 - structured JSON CLI output;
-- CI-friendly exit-code semantics.
+- local MCP stdio server;
+- structured MCP output;
+- Codex-compatible MCP tool schemas.
 
-MCP interfaces, public packaging, and remote deployment are still under
-development.
+Remote MCP deployment, hardening, CI/release automation, and the public v0.1.0 package release are still under development.
 
 ## License
 

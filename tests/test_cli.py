@@ -114,37 +114,34 @@ def test_cli_without_arguments_shows_help(
     assert "check" in captured.out
     assert "audit" in captured.out
     assert "compare" in captured.out
+    assert "mcp" in captured.out
 
 
 def test_check_json_returns_structured_result(
     monkeypatch,
     capsys,
 ) -> None:
-    client = FakePyPIClient(
-        {
-            "demo": _project(
-                "demo",
-                (_wheel("demo"),),
-            )
-        }
-    )
+    client = FakePyPIClient({
+        "demo": _project(
+            "demo",
+            (_wheel("demo"),),
+        )
+    })
 
     _install_fake_client(
         monkeypatch,
         client,
     )
 
-    exit_code = cli.main(
-        [
-            "check",
-            "demo>=1",
-            "--python",
-            "3.11",
-            "--platform",
-            "win_amd64",
-            "--json",
-        ]
-    )
+    exit_code = cli.main([
+        "check",
+        "demo>=1",
+        "--python",
+        "3.11",
+        "--platform",
+        "win_amd64",
+        "--json",
+    ])
 
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
@@ -161,30 +158,26 @@ def test_check_warning_is_zero_by_default(
     monkeypatch,
     capsys,
 ) -> None:
-    client = FakePyPIClient(
-        {
-            "demo": _project(
-                "demo",
-                (_sdist("demo"),),
-            )
-        }
-    )
+    client = FakePyPIClient({
+        "demo": _project(
+            "demo",
+            (_sdist("demo"),),
+        )
+    })
 
     _install_fake_client(
         monkeypatch,
         client,
     )
 
-    exit_code = cli.main(
-        [
-            "check",
-            "demo",
-            "--python",
-            "3.11",
-            "--platform",
-            "win_amd64",
-        ]
-    )
+    exit_code = cli.main([
+        "check",
+        "demo",
+        "--python",
+        "3.11",
+        "--platform",
+        "win_amd64",
+    ])
 
     captured = capsys.readouterr()
 
@@ -198,31 +191,27 @@ def test_check_warning_is_one_in_strict_mode(
     monkeypatch,
     capsys,
 ) -> None:
-    client = FakePyPIClient(
-        {
-            "demo": _project(
-                "demo",
-                (_sdist("demo"),),
-            )
-        }
-    )
+    client = FakePyPIClient({
+        "demo": _project(
+            "demo",
+            (_sdist("demo"),),
+        )
+    })
 
     _install_fake_client(
         monkeypatch,
         client,
     )
 
-    exit_code = cli.main(
-        [
-            "check",
-            "demo",
-            "--python",
-            "3.11",
-            "--platform",
-            "win_amd64",
-            "--strict",
-        ]
-    )
+    exit_code = cli.main([
+        "check",
+        "demo",
+        "--python",
+        "3.11",
+        "--platform",
+        "win_amd64",
+        "--strict",
+    ])
 
     capsys.readouterr()
 
@@ -232,16 +221,14 @@ def test_check_warning_is_one_in_strict_mode(
 def test_invalid_target_returns_two(
     capsys,
 ) -> None:
-    exit_code = cli.main(
-        [
-            "check",
-            "demo",
-            "--python",
-            "3.11.9",
-            "--platform",
-            "win_amd64",
-        ]
-    )
+    exit_code = cli.main([
+        "check",
+        "demo",
+        "--python",
+        "3.11.9",
+        "--platform",
+        "win_amd64",
+    ])
 
     captured = capsys.readouterr()
 
@@ -262,35 +249,31 @@ def test_audit_auto_detects_requirements_file(
         encoding="utf-8",
     )
 
-    client = FakePyPIClient(
-        {
-            "alpha": _project(
-                "alpha",
-                (_wheel("alpha"),),
-            ),
-            "beta": _project(
-                "beta",
-                (_wheel("beta"),),
-            ),
-        }
-    )
+    client = FakePyPIClient({
+        "alpha": _project(
+            "alpha",
+            (_wheel("alpha"),),
+        ),
+        "beta": _project(
+            "beta",
+            (_wheel("beta"),),
+        ),
+    })
 
     _install_fake_client(
         monkeypatch,
         client,
     )
 
-    exit_code = cli.main(
-        [
-            "audit",
-            str(manifest),
-            "--python",
-            "3.11",
-            "--platform",
-            "win_amd64",
-            "--json",
-        ]
-    )
+    exit_code = cli.main([
+        "audit",
+        str(manifest),
+        "--python",
+        "3.11",
+        "--platform",
+        "win_amd64",
+        "--json",
+    ])
 
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
@@ -313,18 +296,16 @@ def test_audit_extra_is_rejected_for_requirements(
         encoding="utf-8",
     )
 
-    exit_code = cli.main(
-        [
-            "audit",
-            str(manifest),
-            "--extra",
-            "dev",
-            "--python",
-            "3.11",
-            "--platform",
-            "win_amd64",
-        ]
-    )
+    exit_code = cli.main([
+        "audit",
+        str(manifest),
+        "--extra",
+        "dev",
+        "--python",
+        "3.11",
+        "--platform",
+        "win_amd64",
+    ])
 
     captured = capsys.readouterr()
 
@@ -345,33 +326,29 @@ def test_manifest_type_override_handles_custom_filename(
         encoding="utf-8",
     )
 
-    client = FakePyPIClient(
-        {
-            "demo": _project(
-                "demo",
-                (_wheel("demo"),),
-            )
-        }
-    )
+    client = FakePyPIClient({
+        "demo": _project(
+            "demo",
+            (_wheel("demo"),),
+        )
+    })
 
     _install_fake_client(
         monkeypatch,
         client,
     )
 
-    exit_code = cli.main(
-        [
-            "audit",
-            str(manifest),
-            "--type",
-            "requirements",
-            "--python",
-            "3.11",
-            "--platform",
-            "win_amd64",
-            "--json",
-        ]
-    )
+    exit_code = cli.main([
+        "audit",
+        str(manifest),
+        "--type",
+        "requirements",
+        "--python",
+        "3.11",
+        "--platform",
+        "win_amd64",
+        "--json",
+    ])
 
     captured = capsys.readouterr()
 
@@ -393,16 +370,14 @@ def test_unknown_manifest_name_requires_type(
         encoding="utf-8",
     )
 
-    exit_code = cli.main(
-        [
-            "audit",
-            str(manifest),
-            "--python",
-            "3.11",
-            "--platform",
-            "win_amd64",
-        ]
-    )
+    exit_code = cli.main([
+        "audit",
+        str(manifest),
+        "--python",
+        "3.11",
+        "--platform",
+        "win_amd64",
+    ])
 
     captured = capsys.readouterr()
 
@@ -423,41 +398,37 @@ def test_compare_regression_returns_one(
         encoding="utf-8",
     )
 
-    client = FakePyPIClient(
-        {
-            "demo": _project(
-                "demo",
-                (
-                    _wheel(
-                        "demo",
-                        tag=("cp311-cp311-win_amd64"),
-                    ),
-                    _sdist("demo"),
+    client = FakePyPIClient({
+        "demo": _project(
+            "demo",
+            (
+                _wheel(
+                    "demo",
+                    tag=("cp311-cp311-win_amd64"),
                 ),
-            )
-        }
-    )
+                _sdist("demo"),
+            ),
+        )
+    })
 
     _install_fake_client(
         monkeypatch,
         client,
     )
 
-    exit_code = cli.main(
-        [
-            "compare",
-            str(manifest),
-            "--from-python",
-            "3.11",
-            "--from-platform",
-            "win_amd64",
-            "--to-python",
-            "3.11",
-            "--to-platform",
-            ("manylinux_2_17_x86_64"),
-            "--json",
-        ]
-    )
+    exit_code = cli.main([
+        "compare",
+        str(manifest),
+        "--from-python",
+        "3.11",
+        "--from-platform",
+        "win_amd64",
+        "--to-python",
+        "3.11",
+        "--to-platform",
+        ("manylinux_2_17_x86_64"),
+        "--json",
+    ])
 
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
@@ -479,34 +450,30 @@ def test_compare_unchanged_returns_zero(
         encoding="utf-8",
     )
 
-    client = FakePyPIClient(
-        {
-            "demo": _project(
-                "demo",
-                (_wheel("demo"),),
-            )
-        }
-    )
+    client = FakePyPIClient({
+        "demo": _project(
+            "demo",
+            (_wheel("demo"),),
+        )
+    })
 
     _install_fake_client(
         monkeypatch,
         client,
     )
 
-    exit_code = cli.main(
-        [
-            "compare",
-            str(manifest),
-            "--from-python",
-            "3.11",
-            "--from-platform",
-            "win_amd64",
-            "--to-python",
-            "3.11",
-            "--to-platform",
-            "manylinux_2_17_x86_64",
-        ]
-    )
+    exit_code = cli.main([
+        "compare",
+        str(manifest),
+        "--from-python",
+        "3.11",
+        "--from-platform",
+        "win_amd64",
+        "--to-python",
+        "3.11",
+        "--to-platform",
+        "manylinux_2_17_x86_64",
+    ])
 
     captured = capsys.readouterr()
 
@@ -520,16 +487,14 @@ def test_missing_manifest_returns_two(
 ) -> None:
     missing = tmp_path / "requirements.txt"
 
-    exit_code = cli.main(
-        [
-            "audit",
-            str(missing),
-            "--python",
-            "3.11",
-            "--platform",
-            "win_amd64",
-        ]
-    )
+    exit_code = cli.main([
+        "audit",
+        str(missing),
+        "--python",
+        "3.11",
+        "--platform",
+        "win_amd64",
+    ])
 
     captured = capsys.readouterr()
 
