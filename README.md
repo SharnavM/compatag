@@ -1,128 +1,155 @@
-# Compatag
+<h1 align="center">Compatag</h1>
 
-**Preflight Python package compatibility across Python versions and deployment platforms.**
+<p align="center">
+  <a href="https://github.com/SharnavM/compatag/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/SharnavM/compatag/test.yml?label=CI" alt="CI status"></a> <a href="https://pypi.org/project/compatag/"><img src="https://img.shields.io/pypi/v/compatag" alt="PyPI version"></a> <a href="pyproject.toml"><img src="https://img.shields.io/badge/Python-%3E%3D3.11-blue" alt="Python >=3.11"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green" alt="MIT license"></a>
+</p>
 
-Compatag is an open-source Python developer tool for determining whether published Python
-package distributions are compatible with a target CPython version and platform.
+Compatag preflights Python package compatibility before deployment. It checks published PyPI package artifacts against explicit Python versions and platforms, identifying compatible wheels and cases that may require a source build.
 
-The project is currently in early development.
+Compatag is available through a command-line interface and a local MCP server. Its results describe published metadata and artifacts; they do not guarantee that an application will run successfully.
 
-## Planned interfaces
+## Contents
 
-Compatag will expose the same compatibility engine through:
+- [Demo](#demo)
+- [Features](#features)
+- [Installation](#installation)
+- [How to Use](#how-to-use)
+- [Current Scope and Limitations](#current-scope-and-limitations)
+- [To-do](#to-do)
+- [License](#license)
 
-- a command-line interface;
-- a local MCP server over stdio;
-- an optional remote MCP server over Streamable HTTP.
+## Demo
 
-The MCP interface is intended to work with standards-compliant MCP clients, including Claude Code and Codex CLI.
+The video shows Compatag's MCP server in action with Codex. Playback is deliberately slowed during tool calls and while Codex presents conclusions based on the results, making these steps easier to follow.
 
-## CLI
+https://github.com/user-attachments/assets/709741e3-4c93-4ec7-8706-19bcb4995c2e
 
-Check one package:
+## Features
 
-```cmd
-compatag check "numpy>=2,<3" --python 3.11 --platform manylinux_2_17_aarch64
-```
+- **Package checks**: Checks a single Python requirement against an explicit CPython version and platform.
+- **Dependency audits**: Audits direct dependencies in requirements-style files and PEP 621 `pyproject.toml` files, including selected optional dependency groups.
+- **Wheel and source-build detection**: Detects compatible wheels and source-build requirements, taking `Requires-Python` and environment markers into account.
+- **Target comparisons**: Compares two deployment targets, reporting compatibility, selected-version, artifact, and dependency-applicability changes.
+- **CLI and MCP support**: Provides CLI commands with JSON output and three tools through a local MCP stdio server.
+- **Concurrent analysis**: Analyzes PyPI packages concurrently, with configurable concurrency and resource limits.
 
-Audit a project:
+## Installation
 
-```cmd
-compatag audit requirements.txt --python 3.11 --platform manylinux_2_17_aarch64
-```
+Compatag requires Python 3.11 or newer. CI covers Python 3.11-3.14 on Windows and Ubuntu.
 
-Compare deployment targets:
-
-```cmd
-compatag compare requirements.txt --from-python 3.11 --from-platform win_amd64 --to-python 3.11 --to-platform manylinux_2_17_aarch64
-```
-
-Add `--json` to any analysis command for structured output.
-
-## MCP
-
-Compatag can run as a local MCP server over stdio:
-
-```cmd
-compatag-mcp
-```
-
-It exposes three read-only tools:
-
-```text
-check_package
-audit_manifest
-compare_targets
-```
-
-The MCP tools use the same deterministic compatibility engine as the CLI.
-
-Example Codex use cases include:
-
-- checking a package before adding or upgrading it;
-- auditing a project's direct Python dependencies before deployment;
-- comparing dependency compatibility before changing Python version or deployment platform.
-
-Manifest tools accept manifest contents rather than filesystem paths.
-
-## Scope
-
-Compatag will inspect package metadata, Python version requirements, distribution artifacts,
-and wheel compatibility tags.
-
-It will not execute third-party package code or claim that an application is guaranteed to
-run successfully on a target system.
-
-## Development
-
-Compatag requires Python 3.11 or newer.
+### From PyPI
 
 ```bash
-py -3.11 -m venv .venv
-.venv\Scripts\activate
+pip install compatag
+```
+
+### From source
+
+```bash
+git clone https://github.com/SharnavM/compatag.git
+cd compatag
+python -m pip install .
+```
+
+For development, an editable installation includes the test and code-checking tools:
+
+```bash
 python -m pip install -e ".[dev]"
 ```
 
-Run the test suite:
+## How to Use
+
+### CLI
+
+Each command takes an explicit deployment target, independent of the machine running Compatag.
+
+A single requirement check:
 
 ```bash
-python -m pytest
+compatag check "numpy>=2,<3" --python 3.11 --platform manylinux_2_17_aarch64
 ```
 
-Run static checks:
+A direct-dependency audit:
 
 ```bash
-python -m ruff check .
-python -m ruff format --check .
-python -m mypy src
+compatag audit requirements.txt --python 3.11 --platform win_amd64
 ```
 
-## Status
+For a project with a `dev` optional dependency group:
 
-Pre-alpha.
+```bash
+compatag audit pyproject.toml --extra dev --python 3.11 --platform win_amd64
+```
 
-Implemented:
+A comparison between Windows x64 and ARM64 Linux:
 
-- deployment target modelling;
-- cross-platform wheel compatibility-tag generation;
-- asynchronous PyPI Simple API retrieval;
-- single-package compatibility analysis;
-- requirements.txt and PEP 621 pyproject.toml parsing;
-- project-wide compatibility auditing;
-- deployment-target comparison;
-- command-line package, audit, and comparison workflows;
-- structured JSON CLI output;
-- local MCP stdio server;
-- structured MCP output;
-- Codex-compatible MCP tool schemas.
-- bounded analysis concurrency and MCP workload limits;
-- bounded PyPI response and connection resources;
-- in-memory PyPI metadata caching and request coalescing;
-- Windows and Ubuntu CI across Python 3.11–3.14;
-- real stdio MCP subprocess regression testing.
+```bash
+compatag compare requirements.txt --from-python 3.11 --from-platform win_amd64 --to-python 3.11 --to-platform manylinux_2_17_aarch64
+```
 
-Remote MCP deployment, hardening, CI/release automation, and the public v0.1.0 package release are still under development.
+All three analysis commands support `--json` for structured output. The [CLI guide](docs/USAGE.md#cli) covers complete options, exit codes, and further examples.
+
+### MCP
+
+Compatag exposes a local MCP stdio server through `compatag-mcp`. The MCP client launches the server and receives these tools:
+
+| Tool              | Purpose                                                   |
+| ----------------- | --------------------------------------------------------- |
+| `check_package`   | Checks one requirement against a target.                  |
+| `audit_manifest`  | Audits a manifest's direct dependencies against a target. |
+| `compare_targets` | Compares a manifest across two targets.                   |
+
+The following registration examples assume that Compatag is installed and `compatag-mcp` is available on the client's `PATH`.
+
+**[Codex CLI](https://developers.openai.com/codex/mcp):**
+
+```bash
+codex mcp add compatag -- compatag-mcp
+```
+
+**[Claude Code](https://code.claude.com/docs/en/mcp):**
+
+```bash
+claude mcp add --transport stdio compatag -- compatag-mcp
+```
+
+**Other clients (Cursor, Antigravity, and similar editors):**
+
+Local stdio configuration uses `compatag-mcp` as the command, with no arguments. For clients that accept an `mcpServers` configuration, such as [Cursor](https://docs.cursor.com/context/model-context-protocol), a minimal entry is:
+
+```json
+{
+  "mcpServers": {
+    "compatag": {
+      "command": "compatag-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+The configuration location and format depend on the client. An absolute executable path can replace `compatag-mcp` when the installation is outside the client's `PATH`.
+
+MCP manifest tools receive manifest contents, not arbitrary filesystem paths. The client reads the file and passes its text to Compatag. The [MCP guide](docs/USAGE.md#mcp) covers tool inputs, optional groups, and result handling.
+
+## Current Scope and Limitations
+
+- Analysis covers direct dependencies. Transitive dependencies are not resolved.
+- Interpreter support is currently limited to CPython.
+- Results are based on published PyPI distribution metadata and artifacts. Compatag does not execute packages or guarantee application or runtime compatibility.
+- A source distribution means a source build may be required. Compatag does not build it or prove that the build will succeed.
+- Markers and Python constraints that cannot be resolved from the supplied target are reported as indeterminate.
+- Direct URL requirements and local package paths are outside the current analysis scope. Pip directives such as `-r`, `-c`, `-e`, and `--index-url` produce manifest issues. Dynamically supplied project dependencies cannot be fully audited from static text.
+
+The [manifest guide](docs/MANIFESTS.md) describes supported input syntax and limitations.
+
+Further documentation covers [compatibility results](docs/COMPATIBILITY.md), [architecture](docs/ARCHITECTURE.md), [development](docs/DEVELOPMENT.md), and [releasing](docs/RELEASING.md).
+
+## To-do
+
+- [ ] Transitive dependency resolution.
+- [ ] Streamable HTTP MCP transport for remote deployment.
 
 ## License
 
-MIT
+Compatag is released under the [MIT License](LICENSE).
